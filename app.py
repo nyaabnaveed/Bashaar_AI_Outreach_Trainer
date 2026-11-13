@@ -1,106 +1,49 @@
 
 import streamlit as st
 
-from database.db import create_table, save_intern
-from utils.role_mapper import assign_role
-
-create_table()
-
 st.set_page_config(
     page_title="Bashaar AI",
     page_icon="🤖",
     layout="wide"
 )
 
-st.title("Bashaar AI")
+st.title("🤖 Bashaar AI")
 st.subheader("AI Outreach Trainer & Lead Router")
 
 st.divider()
 
-st.header("AI Intern Skill Assessor")
-st.write("Complete the form to get your personalized role recommendation.")
+st.header("Welcome to Bashaar AI!")
+st.write(
+    "Your AI-powered workspace for intern assessment, "
+    "outreach training and lead management."
+)
 
-with st.form("intern_form"):
+st.subheader("Application Modules")
 
-    name = st.text_input("Full Name")
-    email = st.text_input("Email Address")
-    education = st.text_input("Education")
+col1, col2 = st.columns(2)
 
-    background = st.selectbox(
-        "Select Your Background",
-        ["Technical", "Sales", "Graphic Design", "Content"]
+with col1:
+    st.subheader("👩‍💻 Intern Skill Assessor")
+    st.write(
+        "Analyze intern skills and get AI-powered role recommendations."
+    )
+    st.page_link(
+        "pages/1_Intern_Assessor.py",
+        label="Open Intern Assessor",
+        icon="👩‍💻"
     )
 
-    skills = st.multiselect(
-        "Select Your Skills",
-        [
-            "Python",
-            "Java",
-            "AI Automation",
-            "Make.com",
-            "Communication",
-            "Sales",
-            "Graphic Design",
-            "Content Writing",
-            "Social Media Marketing"
-        ]
+with col2:
+    st.subheader("💬 Outreach Simulator")
+    st.write(
+        "Practice outreach messages and receive AI feedback."
+    )
+    st.page_link(
+        "pages/2_Outreach_Simulator.py",
+        label="Open Outreach Simulator",
+        icon="💬"
     )
 
-    experience = st.selectbox(
-        "Experience Level",
-        ["Beginner", "Intermediate", "Advanced"]
-    )
+st.divider()
 
-    interests = st.text_area(
-        "What type of work interests you?"
-    )
-
-    submit = st.form_submit_button("Submit Profile")
-
-
-if submit:
-
-    if name.strip() and email.strip() and skills:
-
-        try:
-            with st.spinner("AI is analyzing your profile..."):
-
-                result = assign_role(
-                    name,
-                    education,
-                    background,
-                    skills,
-                    experience,
-                    interests
-                )
-
-                assigned_role = result["assigned_role"]
-                assessment = result["assessment"]
-
-                save_intern(
-                    name,
-                    email,
-                    education,
-                    background,
-                    skills,
-                    experience,
-                    interests,
-                    assigned_role,
-                    assessment
-                )
-
-            st.success("Your profile has been assessed successfully!")
-
-            st.divider()
-
-            st.subheader("Your AI Recommended Role")
-            st.success(assigned_role)
-
-            st.write("**Why this role?**")
-            st.write(assessment)
-
-        except Exception as e:
-            st.error(f"Something went wrong: {e}")
-
-    else:
-        st.error("Please enter your name, email and at least one skill.")
+st.caption("Bashaar AI | AI Outreach Trainer & Lead Router")

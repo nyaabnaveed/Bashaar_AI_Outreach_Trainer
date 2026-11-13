@@ -69,3 +69,57 @@ def save_intern(name, email, education, background,
 
     conn.commit()
     conn.close()
+
+def create_outreach_table():
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS outreach_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            intern_name TEXT,
+            campaign TEXT,
+            message TEXT,
+            hook_score REAL,
+            value_score REAL,
+            cta_score REAL,
+            overall_feedback TEXT,
+            improved_version TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+def save_outreach_attempt(intern_name, campaign, message, result):
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO outreach_attempts (
+            intern_name,
+            campaign,
+            message,
+            hook_score,
+            value_score,
+            cta_score,
+            overall_feedback,
+            improved_version
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        intern_name,
+        campaign,
+        message,
+        result["hook_score"],
+        result["value_score"],
+        result["cta_score"],
+        result["overall_feedback"],
+        result["improved_version"]
+    ))
+
+    conn.commit()
+    conn.close()
