@@ -1,6 +1,10 @@
-from database.db import create_table, save_intern
-create_table()
+
 import streamlit as st
+
+from database.db import create_table, save_intern
+from utils.role_mapper import assign_role
+
+create_table()
 
 st.set_page_config(
     page_title="Bashaar AI",
@@ -19,19 +23,12 @@ st.write("Complete the form to get your personalized role recommendation.")
 with st.form("intern_form"):
 
     name = st.text_input("Full Name")
-
     email = st.text_input("Email Address")
-
     education = st.text_input("Education")
 
     background = st.selectbox(
         "Select Your Background",
-        [
-            "Technical",
-            "Sales",
-            "Graphic Design",
-            "Content"
-        ]
+        ["Technical", "Sales", "Graphic Design", "Content"]
     )
 
     skills = st.multiselect(
@@ -51,11 +48,7 @@ with st.form("intern_form"):
 
     experience = st.selectbox(
         "Experience Level",
-        [
-            "Beginner",
-            "Intermediate",
-            "Advanced"
-        ]
+        ["Beginner", "Intermediate", "Advanced"]
     )
 
     interests = st.text_area(
@@ -67,25 +60,47 @@ with st.form("intern_form"):
 
 if submit:
 
-    if name and email and skills:
+    if name.strip() and email.strip() and skills:
 
-        save_intern(
-            name,
-            email,
-            education,
-            background,
-            skills,
-            experience,
-            interests
-        )
+        try:
+            with st.spinner("AI is analyzing your profile..."):
 
-        st.success("Intern profile saved successfully!")
+                result = assign_role(
+                    name,
+                    education,
+                    background,
+                    skills,
+                    experience,
+                    interests
+                )
 
-        st.subheader("Your Profile")
-        st.write("Name:", name)
-        st.write("Email:", email)
-        st.write("Background:", background)
-        st.write("Skills:", ", ".join(skills))
+                assigned_role = result["assigned_role"]
+                assessment = result["assessment"]
+
+                save_intern(
+                    name,
+                    email,
+                    education,
+                    background,
+                    skills,
+                    experience,
+                    interests,
+                    assigned_role,
+                    assessment
+                )
+
+            st.success("Your profile has been assessed successfully!")
+
+            st.divider()
+
+            st.subheader("Your AI Recommended Role")
+            st.success(assigned_role)
+
+            st.write("**Why this role?**")
+            st.write(assessment)
+
+        except Exception as e:
+            st.error(f"Something went wrong: {e}")
 
     else:
         st.error("Please enter your name, email and at least one skill.")
