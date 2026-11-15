@@ -44,6 +44,18 @@ with col2:
         icon="💬"
     )
 
+st.subheader("🎯 AI Lead Qualification")
+st.write(
+    "Analyze customer inquiries, extract requirements "
+    "and classify leads as Hot, Warm or Cold."
+)
+
+st.page_link(
+    "pages/3_Lead_Qualification.py",
+    label="Open Lead Qualification",
+    icon="🎯"
+)
+
 st.divider()
 
 st.caption("Bashaar AI | AI Outreach Trainer & Lead Router")

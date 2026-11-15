@@ -123,3 +123,54 @@ def save_outreach_attempt(intern_name, campaign, message, result):
 
     conn.commit()
     conn.close()
+
+def create_leads_table():
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS leads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            inquiry TEXT,
+            budget TEXT,
+            needs TEXT,
+            timeline TEXT,
+            urgency TEXT,
+            lead_category TEXT,
+            reasoning TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+def save_lead(inquiry, result):
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO leads (
+            inquiry,
+            budget,
+            needs,
+            timeline,
+            urgency,
+            lead_category,
+            reasoning
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        inquiry,
+        result["budget"],
+        result["needs"],
+        result["timeline"],
+        result["urgency"],
+        result["lead_category"],
+        result["reasoning"]
+    ))
+
+    conn.commit()
+    conn.close()
