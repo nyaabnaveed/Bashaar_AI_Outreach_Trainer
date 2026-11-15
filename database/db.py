@@ -174,3 +174,124 @@ def save_lead(inquiry, result):
 
     conn.commit()
     conn.close()
+
+
+def create_task_assignments_table():
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS task_assignment_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lead_id INTEGER,
+            intern_id INTEGER,
+            match_score REAL,
+            assignment_reason TEXT,
+            status TEXT DEFAULT 'Assigned',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def save_task_assignment(lead_id, intern_id, match_score, assignment_reason):
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO task_assignment_history (
+            lead_id,
+            intern_id,
+            match_score,
+            assignment_reason,
+            status
+        )
+        VALUES (?, ?, ?, ?, 'Assigned')
+    """, (
+        lead_id,
+        intern_id,
+        match_score,
+        assignment_reason
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def get_assignment_for_lead(lead_id):
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT h.intern_id, i.name, h.match_score,
+               h.assignment_reason, h.created_at
+        FROM task_assignment_history h
+        JOIN intern_profiles i ON h.intern_id = i.id
+        WHERE h.lead_id = ?
+        ORDER BY h.id DESC
+        LIMIT 1
+    """, (lead_id,))
+
+    assignment = cursor.fetchone()
+    conn.close()
+
+    return assignment
+
+def get_leads():
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, needs, lead_category
+        FROM leads
+        ORDER BY id DESC
+    """)
+
+    leads = cursor.fetchall()
+    conn.close()
+
+    return leads
+
+def get_interns():
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, name, assigned_role, skills
+        FROM intern_profiles
+    """)
+
+    interns = cursor.fetchall()
+    conn.close()
+
+    return interns
+
+def get_assignment_history(lead_id):
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            i.name,
+            h.match_score,
+            h.assignment_reason,
+            h.status,
+            h.created_at
+        FROM task_assignment_history h
+        JOIN intern_profiles i ON h.intern_id = i.id
+        WHERE h.lead_id = ?
+        ORDER BY h.id DESC
+    """, (lead_id,))
+
+    history = cursor.fetchall()
+    conn.close()
+
+    return history

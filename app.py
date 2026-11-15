@@ -20,6 +20,7 @@ st.write(
 
 st.subheader("Application Modules")
 
+# First Row
 col1, col2 = st.columns(2)
 
 with col1:
@@ -44,17 +45,30 @@ with col2:
         icon="💬"
     )
 
-st.subheader("🎯 AI Lead Qualification")
-st.write(
-    "Analyze customer inquiries, extract requirements "
-    "and classify leads as Hot, Warm or Cold."
-)
+# Second Row
+col3, col4 = st.columns(2)
 
-st.page_link(
-    "pages/3_Lead_Qualification.py",
-    label="Open Lead Qualification",
-    icon="🎯"
-)
+with col3:
+    st.subheader("🎯 AI Lead Qualification")
+    st.write(
+        "Analyze customer inquiries and classify leads as Hot, Warm or Cold."
+    )
+    st.page_link(
+        "pages/3_Lead_Qualification.py",
+        label="Open Lead Qualification",
+        icon="🎯"
+    )
+
+with col4:
+    st.subheader("📋 AI Task Manager")
+    st.write(
+        "Automatically match incoming leads with the most suitable interns."
+    )
+    st.page_link(
+        "pages/4_Task_Manager.py",
+        label="Open Task Manager",
+        icon="📋"
+    )
 
 st.divider()
 
