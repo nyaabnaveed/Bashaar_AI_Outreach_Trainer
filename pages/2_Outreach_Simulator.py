@@ -1,60 +1,88 @@
 import streamlit as st
+
 from utils.outreach_coach import evaluate_outreach
 from database.db import create_outreach_table, save_outreach_attempt
-
-st.set_page_config(
-    page_title="Outreach Simulator | Bashaar AI",
-    page_icon="💬",
-    layout="wide"
+from utils.ui import (
+    setup_page,
+    page_header,
+    section_title,
+    card,
+    score_card,
+    text_block,
+    notice,
+    esc,
 )
 
 create_outreach_table()
 
-st.title("💬 AI Outreach Simulator")
-st.write("Practice your outreach messages and get instant AI feedback.")
+setup_page("Outreach Simulator", active="outreach")
 
-st.divider()
-
-# Intern Details
-st.subheader("👤 Intern Details")
-
-intern_name = st.text_input("Enter your name")
-
-# Campaign Selection
-st.subheader("🎯 Select Campaign")
-
-campaign = st.selectbox(
-    "Choose your target audience",
-    ["Retail Apparel", "Student AI Mentorship"]
+page_header(
+    "Module 02",
+    "Outreach Simulator",
+    "Practise your outreach messages and receive instant AI feedback on "
+    "hook, value proposition and call to action.",
 )
 
-if campaign == "Retail Apparel":
-    st.info(
-        "Target: Retail clothing stores and apparel brands. "
-        "Focus on their business challenges and how AI can help."
+
+def rating(score):
+    """Short quality label shown under each score."""
+    if score >= 8:
+        return "Strong"
+    if score >= 7:
+        return "Solid"
+    return "Needs improvement"
+
+
+# ----------------------------------------------------------- Campaign setup
+section_title("Campaign setup", "Enter your name and choose who you are writing to.")
+
+with card():
+
+    col_name, col_campaign = st.columns(2)
+
+    with col_name:
+        intern_name = st.text_input("Enter your name")
+
+    with col_campaign:
+        campaign = st.selectbox(
+            "Choose your target audience",
+            ["Retail Apparel", "Student AI Mentorship"]
+        )
+
+    if campaign == "Retail Apparel":
+        notice(
+            "Target: Retail clothing stores and apparel brands. "
+            "Focus on their business challenges and how AI can help.",
+            "info",
+        )
+    else:
+        notice(
+            "Target: Students interested in AI mentorship and learning opportunities.",
+            "info",
+        )
+
+# --------------------------------------------------------- Outreach message
+section_title("Your outreach message", "Write the message exactly as you would send it.")
+
+with card():
+
+    message = st.text_area(
+        "Your Message",
+        placeholder="Write your cold outreach message here...",
+        height=180
     )
-else:
-    st.info(
-        "Target: Students interested in AI mentorship and learning opportunities."
-    )
 
-# Outreach Message
-st.subheader("✉️ Write Your Outreach Message")
+    evaluate = st.button("Evaluate Message", type="primary")
 
-message = st.text_area(
-    "Your Message",
-    placeholder="Write your cold outreach message here...",
-    height=180
-)
-
-# Evaluate Button
-if st.button("🚀 Evaluate My Message", type="primary"):
+# ------------------------------------------------------------------ Results
+if evaluate:
 
     if not intern_name.strip():
-        st.warning("Please enter your name.")
+        notice("Please enter your name.")
 
     elif not message.strip():
-        st.warning("Please write an outreach message first.")
+        notice("Please write an outreach message first.")
 
     else:
         with st.spinner("AI Sales Coach is evaluating your message..."):
@@ -69,34 +97,65 @@ if st.button("🚀 Evaluate My Message", type="primary"):
                     result
                 )
 
-                st.success("Your outreach message has been evaluated and saved!")
+                notice("Your outreach message has been evaluated and saved.")
 
-                st.divider()
-                st.header("📊 AI Evaluation Results")
+                section_title("AI evaluation results")
 
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
-                    st.metric("Hook Quality", f"{result['hook_score']}/10")
+                    score_card(
+                        "Hook Quality",
+                        result["hook_score"],
+                        note=rating(result["hook_score"]),
+                    )
 
                 with col2:
-                    st.metric("Value Proposition", f"{result['value_score']}/10")
+                    score_card(
+                        "Value Proposition",
+                        result["value_score"],
+                        note=rating(result["value_score"]),
+                    )
 
                 with col3:
-                    st.metric("CTA Clarity", f"{result['cta_score']}/10")
+                    score_card(
+                        "CTA Clarity",
+                        result["cta_score"],
+                        note=rating(result["cta_score"]),
+                    )
 
-                st.subheader("📝 Overall Feedback")
-                st.write(result["overall_feedback"])
+                section_title("Feedback")
+                text_block("Overall feedback", result["overall_feedback"])
 
-                st.subheader("💡 Improvement Suggestions")
+                section_title("Improvement suggestions")
 
                 if result["improvement_suggestions"]:
-                    for suggestion in result["improvement_suggestions"]:
-                        st.write(f"• {suggestion}")
+                    rows = ""
+                    for index, suggestion in enumerate(
+                        result["improvement_suggestions"], start=1
+                    ):
+                        border = "" if index == 1 else "border-top:1px solid #1B1C20;"
+                        rows += (
+                            f'<div class="bz-text" style="display:flex;gap:16px;'
+                            f'padding:14px 0;{border}">'
+                            f'<span style="color:#C9A24B;font-weight:600;'
+                            f'letter-spacing:0.08em;flex:none;">{index:02d}</span>'
+                            f"<span>{esc(suggestion)}</span></div>"
+                        )
+                    st.markdown(
+                        '<div class="bz-panel" style="padding-top:8px;padding-bottom:8px;">'
+                        + rows
+                        + "</div>",
+                        unsafe_allow_html=True,
+                    )
                 else:
-                    st.write("Great work! No major improvements needed.")
+                    notice("Great work! No major improvements needed.")
 
-                st.subheader("✨ Improved Outreach Message")
+                section_title(
+                    "Improved outreach message",
+                    "A rewritten version you can copy and send.",
+                )
+
                 st.text_area(
                     "Your improved version",
                     value=result["improved_version"],
@@ -104,8 +163,4 @@ if st.button("🚀 Evaluate My Message", type="primary"):
                 )
 
             except Exception as e:
-                st.error(f"Something went wrong: {e}")
-
-st.divider()
-
-st.caption("Bashaar AI | AI Outreach Trainer & Lead Router")
+                notice(f"Something went wrong: {e}", "error")

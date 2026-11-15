@@ -1,75 +1,101 @@
-
 import streamlit as st
 
-st.set_page_config(
-    page_title="Bashaar AI",
-    page_icon="🤖",
-    layout="wide"
+from database.db import get_interns, get_leads
+from utils.ui import (
+    setup_page,
+    page_header,
+    section_title,
+    metric_card,
+    module_card,
 )
 
-st.title("🤖 Bashaar AI")
-st.subheader("AI Outreach Trainer & Lead Router")
+setup_page("Dashboard", active="dashboard")
 
-st.divider()
 
-st.header("Welcome to Bashaar AI!")
-st.write(
-    "Your AI-powered workspace for intern assessment, "
-    "outreach training and lead management."
+def safe_rows(loader):
+    """Read rows for the overview numbers. Returns None if the table does not exist yet."""
+    try:
+        return loader()
+    except Exception:
+        return None
+
+
+interns = safe_rows(get_interns)
+leads = safe_rows(get_leads)
+
+page_header(
+    "Overview",
+    "Welcome to Bashaar AI",
+    "Your AI-powered workspace for intern assessment, outreach training "
+    "and lead management.",
 )
 
-st.subheader("Application Modules")
+# ---------------------------------------------------------------- Overview
+section_title("Platform overview")
 
-# First Row
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.subheader("👩‍💻 Intern Skill Assessor")
-    st.write(
-        "Analyze intern skills and get AI-powered role recommendations."
-    )
-    st.page_link(
-        "pages/1_Intern_Assessor.py",
-        label="Open Intern Assessor",
-        icon="👩‍💻"
+    metric_card(
+        "Interns assessed",
+        len(interns) if interns is not None else "-",
+        "Registered intern profiles",
     )
 
 with col2:
-    st.subheader("💬 Outreach Simulator")
-    st.write(
-        "Practice outreach messages and receive AI feedback."
+    metric_card(
+        "Leads qualified",
+        len(leads) if leads is not None else "-",
+        "Inquiries analysed by AI",
     )
-    st.page_link(
-        "pages/2_Outreach_Simulator.py",
-        label="Open Outreach Simulator",
-        icon="💬"
-    )
-
-# Second Row
-col3, col4 = st.columns(2)
 
 with col3:
-    st.subheader("🎯 AI Lead Qualification")
-    st.write(
-        "Analyze customer inquiries and classify leads as Hot, Warm or Cold."
+    hot_count = (
+        sum(1 for lead in leads if "hot" in str(lead[2] or "").lower())
+        if leads is not None
+        else "-"
     )
-    st.page_link(
+    metric_card("Hot leads", hot_count, "Highest priority inquiries")
+
+# ----------------------------------------------------------------- Modules
+section_title("Modules", "Select a module to continue.")
+
+row1_left, row1_right = st.columns(2)
+
+with row1_left:
+    module_card(
+        "user",
+        "Intern Skill Assessor",
+        "Analyse intern backgrounds and receive AI-recommended roles "
+        "based on skills and experience.",
+        "pages/1_Intern_Assessor.py",
+    )
+
+with row1_right:
+    module_card(
+        "message",
+        "Outreach Simulator",
+        "Practise outreach messages and receive scored feedback on hook, "
+        "value proposition and call to action.",
+        "pages/2_Outreach_Simulator.py",
+    )
+
+row2_left, row2_right = st.columns(2)
+
+with row2_left:
+    module_card(
+        "target",
+        "Lead Qualification",
+        "Classify customer inquiries as Hot, Warm or Cold and extract "
+        "the key lead details.",
         "pages/3_Lead_Qualification.py",
-        label="Open Lead Qualification",
-        icon="🎯"
     )
 
-with col4:
-    st.subheader("📋 AI Task Manager")
-    st.write(
-        "Automatically match incoming leads with the most suitable interns."
-    )
-    st.page_link(
+with row2_right:
+    module_card(
+        "clipboard",
+        "Task Manager",
+        "Match qualified leads with the most suitable interns and track "
+        "every assignment.",
         "pages/4_Task_Manager.py",
-        label="Open Task Manager",
-        icon="📋"
     )
-
-st.divider()
-
-st.caption("Bashaar AI | AI Outreach Trainer & Lead Router")

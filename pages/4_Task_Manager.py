@@ -1,4 +1,4 @@
-
+from datetime import datetime, timedelta
 import streamlit as st
 
 from database.db import (
@@ -7,185 +7,252 @@ from database.db import (
     get_interns,
     save_task_assignment,
     get_assignment_for_lead,
-    get_assignment_history
+    get_assignment_history,
 )
-
 from utils.task_assigner import assign_best_intern
-
-
-st.set_page_config(
-    page_title="Task Manager | Bashaar AI",
-    page_icon="📋",
-    layout="wide"
+from utils.ui import (
+    setup_page,
+    page_header,
+    section_title,
+    card,
+    text_block,
+    info_grid,
+    notice,
+    esc,
 )
 
 create_task_assignments_table()
 
-st.title("📋 AI Task Manager")
-st.write(
-    "Match incoming leads with suitable interns "
-    "and manage task assignments."
+def format_pakistan_time(timestamp):
+    if not timestamp:
+        return "N/A"
+
+    try:
+        utc_time = datetime.strptime(
+            str(timestamp),
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        pakistan_time = utc_time + timedelta(hours=5)
+
+        return pakistan_time.strftime("%Y-%m-%d %I:%M:%S %p")
+
+    except (ValueError, TypeError):
+        return str(timestamp)
+setup_page("Task Manager", active="tasks")
+
+page_header(
+    "Module 04",
+    "Task Manager",
+    "Assign qualified leads to the most suitable interns and track "
+    "assignment decisions and history.",
 )
 
-st.divider()
+# -------------------------------------------------------------- Load data
 
-st.subheader("🎯 Lead Assignment")
-
-leads = get_leads()
-interns = get_interns()
+try:
+    leads = get_leads()
+    interns = get_interns()
+except Exception as e:
+    leads = []
+    interns = []
+    notice(f"Unable to load records: {e}", "error")
 
 if not leads:
-    st.info("No leads available. Add a lead through Lead Qualification first.")
+    notice(
+        "No qualified leads are available yet. Please qualify a lead first.",
+        "info",
+    )
 
 elif not interns:
-    st.warning("No intern profiles available. Register an intern first.")
+    notice(
+        "No intern profiles are available. Please register interns first.",
+        "info",
+    )
 
 else:
 
+    # --------------------------------------------------------- Lead selection
+
+    section_title(
+        "Select a lead",
+        "Choose a qualified lead to find its best intern match.",
+    )
+
     lead_options = {
-        f"Lead #{lead[0]} - {lead[1]} ({lead[2]})": lead[0]
+        lead[0]: (
+            f"Lead #{lead[0]}  |  "
+            f"{str(lead[1] or 'No needs description')[:65]}  |  "
+            f"{lead[2] or 'Unclassified'}"
+        )
         for lead in leads
     }
 
     selected_lead = st.selectbox(
-        "Select a lead",
-        options=list(lead_options.keys())
+        "Choose customer lead",
+        options=list(lead_options.keys()),
+        format_func=lambda lead_id: lead_options[lead_id],
     )
 
-    lead_id = lead_options[selected_lead]
+    recommendation_key = f"task_recommendation_{selected_lead}"
 
-    current_assignment = get_assignment_for_lead(lead_id)
+    # ------------------------------------------------------ Current assignment
 
-    if current_assignment:
+    section_title("Current assignment")
 
-        st.success("This lead already has an assignment.")
+    try:
+        current = get_assignment_for_lead(selected_lead)
+    except Exception:
+        current = None
 
-        st.subheader("📌 Current Assignment")
+    if current:
+        current_intern_id, current_name, current_score, current_reason, current_date = current
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.write("**Assigned Intern:**", current_assignment[1])
-            st.write("**Match Score:**", f"{current_assignment[2]}%")
-
-        with col2:
-            st.write("**Assigned On:**", current_assignment[4])
-
-        st.write("**Assignment Reason:**")
-        st.write(current_assignment[3])
-
-        st.info(
-            "You can find a new intern below. "
-            "The previous assignment will remain in history."
-        )
-
-    else:
-        st.info("This lead has not been assigned yet.")
-
-    if st.button(
-        "🔄 Find Best-Matched Intern",
-        type="primary"
-    ):
-
-        try:
-            result = assign_best_intern(lead_id)
-
-            st.session_state["assignment_result"] = result
-            st.session_state["assignment_lead_id"] = lead_id
-
-        except Exception as e:
-            st.error(f"Matching failed: {e}")
-
-    result = st.session_state.get("assignment_result")
-
-    if (
-        result
-        and st.session_state.get("assignment_lead_id") == lead_id
-    ):
-
-        st.divider()
-        st.subheader("🤖 AI Matching Recommendation")
-
-        if not result["matched"]:
-
-            st.warning(result["message"])
-
-        else:
-
-            st.success("Suitable intern found!")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.metric(
-                    "Recommended Intern",
-                    result["intern_name"]
-                )
-
-            with col2:
-                st.metric(
-                    "Match Score",
-                    f"{result['match_score']}%"
-                )
-
-            st.write("**Why this intern?**")
-            st.write(result["assignment_reason"])
-
-            button_label = (
-                "🔄 Confirm Reassignment"
-                if current_assignment
-                else "✅ Confirm Assignment"
+        with card():
+            st.markdown(
+                '<div class="bz-label">Currently assigned intern</div>'
+                f'<div class="bz-heading" style="margin-top:8px;">'
+                f'{esc(current_name)}</div>',
+                unsafe_allow_html=True,
             )
 
-            if st.button(button_label):
+            info_grid([
+                ("Match score", f"{current_score}%"),
+                ("Assigned on", format_pakistan_time(current_date)),
+            ])
 
-                try:
-                    save_task_assignment(
-                        lead_id,
-                        result["intern_id"],
-                        result["match_score"],
-                        result["assignment_reason"]
-                    )
-
-                    st.session_state.pop("assignment_result", None)
-                    st.session_state.pop("assignment_lead_id", None)
-
-                    st.success("Assignment saved successfully!")
-                    st.rerun()
-
-                except Exception as e:
-                    st.error(f"Could not save assignment: {e}")
-st.divider()
-
-st.subheader("📜 Assignment History")
-
-if leads and interns:
-
-    history = get_assignment_history(lead_id)
-
-    if history:
-
-        for index, record in enumerate(history, start=1):
-
-            st.write(f"**Assignment #{index}**")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.write("**Intern:**", record[0])
-                st.write("**Match Score:**", f"{record[1]}%")
-
-            with col2:
-                st.write("**Status:**", record[3])
-                st.write("**Assigned On:**", record[4])
-
-            st.write("**Reason:**", record[2])
-
-            st.divider()
+            text_block("Assignment reason", current_reason)
 
     else:
-        st.info("No assignment history available for this lead.")
+        notice("This lead has not been assigned to an intern yet.", "info")
 
-st.divider()
+    # ------------------------------------------------------ Find best intern
 
-st.caption("Bashaar AI | AI Outreach Trainer & Lead Router")
+    section_title(
+        "Intern recommendation",
+        "Find the strongest match using intern skills, background and role.",
+    )
+
+    with card():
+        if st.button("Find Best Intern", type="primary"):
+            try:
+                with st.spinner("Finding the most suitable intern..."):
+                    result = assign_best_intern(selected_lead)
+
+                st.session_state[recommendation_key] = result
+
+            except Exception as e:
+                st.session_state.pop(recommendation_key, None)
+                notice(f"Unable to find a match: {e}", "error")
+
+    result = st.session_state.get(recommendation_key)
+
+    if result:
+
+        if not result.get("matched"):
+            notice(
+                result.get(
+                    "message",
+                    "No suitable intern found. No assignment has been made.",
+                ),
+                "warning",
+            )
+
+        else:
+            with card():
+                st.markdown(
+                    '<div class="bz-label">Recommended intern</div>'
+                    f'<div class="bz-heading" style="margin-top:8px;">'
+                    f'{esc(result["intern_name"])}</div>',
+                    unsafe_allow_html=True,
+                )
+
+                st.metric(
+                    "Match score",
+                    f'{result["match_score"]}%',
+                )
+
+                text_block(
+                    "Why this intern was selected",
+                    result["assignment_reason"],
+                )
+
+                if current:
+                    notice(
+                        "Confirming this recommendation will create a new "
+                        "assignment. The previous assignment will remain "
+                        "in the history.",
+                        "info",
+                    )
+
+                if st.button(
+                    "Confirm Reassignment" if current else "Confirm Assignment",
+                    type="primary",
+                ):
+                    try:
+                        save_task_assignment(
+                            selected_lead,
+                            result["intern_id"],
+                            result["match_score"],
+                            result["assignment_reason"],
+                        )
+
+                        st.session_state.pop(recommendation_key, None)
+
+                        notice(
+                            "Intern assignment saved successfully.",
+                            "success",
+                        )
+
+                        st.rerun()
+
+                    except Exception as e:
+                        notice(
+                            f"Unable to save assignment: {e}",
+                            "error",
+                        )
+
+    # ------------------------------------------------------ Assignment history
+
+    section_title(
+        "Assignment history",
+        "Review previous assignments and reassignment decisions for this lead.",
+    )
+
+    try:
+        history = get_assignment_history(selected_lead)
+    except Exception:
+        history = []
+
+    if history:
+        with card():
+            for index, record in enumerate(history, start=1):
+                intern_name, match_score, reason, status, created_at = record
+
+                st.markdown(
+                    f'<div class="bz-label">Assignment {index:02d}</div>'
+                    f'<div class="bz-heading" style="margin-top:6px;">'
+                    f'{esc(intern_name)}</div>',
+                    unsafe_allow_html=True,
+                )
+
+                info_grid([
+                    ("Match score", f"{match_score}%"),
+                    ("Status", status),
+                    ("Date", format_pakistan_time(created_at)),
+                ])
+
+                text_block("Assignment reason", reason)
+
+                if index != len(history):
+                    st.markdown(
+                        '<div style="border-top:1px solid #26272B;'
+                        'margin:20px 0;"></div>',
+                        unsafe_allow_html=True,
+                    )
+
+    else:
+        notice(
+            "No assignment history is available for this lead yet.",
+            "info",
+        )

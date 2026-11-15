@@ -1,35 +1,50 @@
-
 import streamlit as st
 
 from database.db import create_table, save_intern
 from utils.role_mapper import assign_role
+from utils.ui import (
+    setup_page,
+    page_header,
+    section_title,
+    text_block,
+    info_grid,
+    notice,
+    esc,
+)
 
 create_table()
 
-st.set_page_config(
-    page_title="Bashaar AI",
-    page_icon="🤖",
-    layout="wide"
+setup_page("Intern Skill Assessor", active="assessor")
+
+page_header(
+    "Module 01",
+    "Intern Skill Assessor",
+    "Complete the registration below to receive a personalised role "
+    "recommendation based on your skills, background and interests.",
 )
 
-st.title("Bashaar AI")
-st.subheader("AI Outreach Trainer & Lead Router")
-
-st.divider()
-
-st.header("AI Intern Skill Assessor")
-st.write("Complete the form to get your personalized role recommendation.")
+# ------------------------------------------------------------ Registration
+section_title(
+    "Intern registration",
+    "Your details are analysed by AI to assign the most suitable role.",
+)
 
 with st.form("intern_form"):
 
-    name = st.text_input("Full Name")
-    email = st.text_input("Email Address")
-    education = st.text_input("Education")
+    col_name, col_email = st.columns(2)
+    with col_name:
+        name = st.text_input("Full Name")
+    with col_email:
+        email = st.text_input("Email Address")
 
-    background = st.selectbox(
-        "Select Your Background",
-        ["Technical", "Sales", "Graphic Design", "Content"]
-    )
+    col_education, col_background = st.columns(2)
+    with col_education:
+        education = st.text_input("Education")
+    with col_background:
+        background = st.selectbox(
+            "Select Your Background",
+            ["Technical", "Sales", "Graphic Design", "Content"]
+        )
 
     skills = st.multiselect(
         "Select Your Skills",
@@ -55,9 +70,10 @@ with st.form("intern_form"):
         "What type of work interests you?"
     )
 
-    submit = st.form_submit_button("Submit Profile")
+    submit = st.form_submit_button("Submit Profile", type="primary")
 
 
+# ------------------------------------------------------------------ Result
 if submit:
 
     if name.strip() and email.strip() and skills:
@@ -89,18 +105,37 @@ if submit:
                     assessment
                 )
 
-            st.success("Your profile has been assessed successfully!")
+            notice("Your profile has been assessed and saved successfully.")
 
-            st.divider()
+            section_title("Role assignment")
 
-            st.subheader("Your AI Recommended Role")
-            st.success(assigned_role)
+            col_role, col_assessment = st.columns([1, 2])
 
-            st.write("**Why this role?**")
-            st.write(assessment)
+            with col_role:
+                st.markdown(
+                    '<div class="bz-panel">'
+                    '<div class="bz-label">Recommended role</div>'
+                    f'<div class="bz-heading">{esc(assigned_role)}</div>'
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+
+            with col_assessment:
+                text_block("Why this role", assessment)
+
+            section_title("Profile summary")
+
+            info_grid([
+                ("Name", name),
+                ("Email", email),
+                ("Education", education),
+                ("Background", background),
+                ("Experience level", experience),
+                ("Skills", ", ".join(skills)),
+            ])
 
         except Exception as e:
-            st.error(f"Something went wrong: {e}")
+            notice(f"Something went wrong: {e}", "error")
 
     else:
-        st.error("Please enter your name, email and at least one skill.")
+        notice("Please enter your name, email and at least one skill.", "error")
