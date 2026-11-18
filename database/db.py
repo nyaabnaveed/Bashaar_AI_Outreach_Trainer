@@ -124,6 +124,7 @@ def save_outreach_attempt(intern_name, campaign, message, result):
     conn.commit()
     conn.close()
 
+
 def create_leads_table():
 
     conn = sqlite3.connect(DB_PATH)
@@ -133,6 +134,7 @@ def create_leads_table():
         CREATE TABLE IF NOT EXISTS leads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             inquiry TEXT,
+            email TEXT,
             budget TEXT,
             needs TEXT,
             timeline TEXT,
@@ -143,10 +145,47 @@ def create_leads_table():
         )
     """)
 
+    # Add email column to existing databases
+    cursor.execute("PRAGMA table_info(leads)")
+    columns = [row[1] for row in cursor.fetchall()]
+
+    if "email" not in columns:
+        cursor.execute(
+            "ALTER TABLE leads ADD COLUMN email TEXT"
+        )
+
     conn.commit()
     conn.close()
 
-def save_lead(inquiry, result):
+
+def normalize_text(value):
+    return " ".join(str(value).casefold().split())
+
+
+def is_duplicate_lead(email, inquiry):
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT inquiry
+        FROM leads
+        WHERE LOWER(TRIM(email)) = ?
+    """, (email.strip().lower(),))
+
+    existing_inquiries = cursor.fetchall()
+    conn.close()
+
+    normalized_inquiry = normalize_text(inquiry)
+
+    for row in existing_inquiries:
+        if normalize_text(row[0]) == normalized_inquiry:
+            return True
+
+    return False
+
+
+def save_lead(inquiry, result, email):
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -154,6 +193,7 @@ def save_lead(inquiry, result):
     cursor.execute("""
         INSERT INTO leads (
             inquiry,
+            email,
             budget,
             needs,
             timeline,
@@ -161,9 +201,10 @@ def save_lead(inquiry, result):
             lead_category,
             reasoning
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         inquiry,
+        email.strip().lower(),
         result["budget"],
         result["needs"],
         result["timeline"],

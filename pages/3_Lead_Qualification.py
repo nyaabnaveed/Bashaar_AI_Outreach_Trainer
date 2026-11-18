@@ -4,7 +4,11 @@ import json
 import urllib.request
 from dotenv import load_dotenv
 from utils.lead_router import qualify_lead
-from database.db import create_leads_table, save_lead
+from database.db import (
+    create_leads_table,
+    save_lead,
+    is_duplicate_lead,
+)
 from utils.ui import (
     setup_page,
     page_header,
@@ -20,7 +24,7 @@ from utils.ui import (
 load_dotenv()
 
 
-def send_hot_lead_notification(inquiry, result):
+def send_hot_lead_notification(inquiry, result, customer_email):
 
     if result.get("lead_category", "").lower() != "hot":
         return False
@@ -31,6 +35,7 @@ def send_hot_lead_notification(inquiry, result):
         raise ValueError("Make webhook URL is missing from .env")
 
     payload = {
+        "customer_email": customer_email,
         "inquiry": inquiry,
         "budget": result["budget"],
         "needs": result["needs"],
@@ -92,6 +97,10 @@ section_title(
 )
 
 with card():
+    customer_email = st.text_input(
+        "Customer email address",
+        placeholder="customer@example.com"
+    )
 
     inquiry = st.text_area(
         "Enter customer message",
@@ -102,31 +111,44 @@ with card():
     analyze = st.button("Analyze Lead", type="primary")
 
 # ------------------------------------------------------------------ Results
+
 if analyze:
 
-    if not inquiry.strip():
+    if not customer_email.strip():
+        notice("Please enter the customer's email address.")
+
+    elif "@" not in customer_email or "." not in customer_email.split("@")[-1]:
+        notice("Please enter a valid email address.")
+
+    elif not inquiry.strip():
         notice("Please enter a customer inquiry first.")
+
+    elif is_duplicate_lead(customer_email, inquiry):
+        notice(
+            "This inquiry has already been submitted using this email address.",
+            "warning",
+        )
 
     else:
         with st.spinner("AI is analyzing the customer inquiry..."):
 
             try:
                 result = qualify_lead(inquiry)
-                
-                save_lead(inquiry, result)
-                
+
+                save_lead(inquiry, result, customer_email)
+
                 notice("Lead analyzed and saved successfully.")
-                
+
                 if result["lead_category"].lower() == "hot":
-                
+
                     try:
-                        send_hot_lead_notification(inquiry, result)
-                
+                        send_hot_lead_notification(inquiry, result, customer_email)
+
                         notice(
                             "Hot Lead email notification sent successfully!",
                             "success",
                         )
-                
+
                     except Exception as e:
                         notice(
                             f"Lead saved, but email notification failed: {e}",
