@@ -1,5 +1,8 @@
 import streamlit as st
-
+import os
+import json
+import urllib.request
+from dotenv import load_dotenv
 from utils.lead_router import qualify_lead
 from database.db import create_leads_table, save_lead
 from utils.ui import (
@@ -14,6 +17,41 @@ from utils.ui import (
     esc,
 )
 
+load_dotenv()
+
+
+def send_hot_lead_notification(inquiry, result):
+
+    if result.get("lead_category", "").lower() != "hot":
+        return False
+
+    webhook_url = os.getenv("MAKE_WEBHOOK_URL")
+
+    if not webhook_url:
+        raise ValueError("Make webhook URL is missing from .env")
+
+    payload = {
+        "inquiry": inquiry,
+        "budget": result["budget"],
+        "needs": result["needs"],
+        "timeline": result["timeline"],
+        "urgency": result["urgency"],
+        "lead_category": result["lead_category"],
+        "reasoning": result["reasoning"],
+    }
+
+    data = json.dumps(payload).encode("utf-8")
+
+    request = urllib.request.Request(
+        webhook_url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    with urllib.request.urlopen(request, timeout=15) as response:
+        return response.status == 200
+    
 create_leads_table()
 
 setup_page("Lead Qualification", active="leads")
@@ -74,10 +112,26 @@ if analyze:
 
             try:
                 result = qualify_lead(inquiry)
-
+                
                 save_lead(inquiry, result)
-
+                
                 notice("Lead analyzed and saved successfully.")
+                
+                if result["lead_category"].lower() == "hot":
+                
+                    try:
+                        send_hot_lead_notification(inquiry, result)
+                
+                        notice(
+                            "Hot Lead email notification sent successfully!",
+                            "success",
+                        )
+                
+                    except Exception as e:
+                        notice(
+                            f"Lead saved, but email notification failed: {e}",
+                            "warning",
+                        )
 
                 section_title("Lead classification")
 
